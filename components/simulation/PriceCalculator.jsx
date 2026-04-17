@@ -1,34 +1,44 @@
-// components/simulation/PriceCalculator.jsx
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+
 export default function PriceCalculator() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* Kolom Input */}
-      <div className="lg:col-span-4 space-y-6 bg-white p-6 rounded-2xl shadow-sm">
-        <h3 className="text-lg font-bold text-palm-dark border-b pb-4">
-          Parameter Harga
-        </h3>
+      <Card className="lg:col-span-4 border-none shadow-sm rounded-2xl">
+        <CardHeader className="border-b mb-4">
+          <CardTitle className="text-lg font-bold text-palm-dark">
+            Parameter Harga
+          </CardTitle>
+        </CardHeader>
 
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-slate-700">
-            Harga CPO Global (IDR/Kg)
-          </label>
-          <input
-            type="number"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-palm-primary outline-none"
-            placeholder="Contoh: 12500"
-          />
-
-          <input
-            type="range"
-            className="w-full accent-palm-primary"
-            min="10000"
-            max="15000"
-          />
-        </div>
-      </div>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">
+              Harga CPO Global (IDR/Kg)
+            </label>
+            <Input
+              type="number"
+              placeholder="Contoh: 12500"
+              defaultValue={12500}
+            />
+          </div>
+          
+          <div className="pt-4">
+            <Slider
+              defaultValue={[12500]}
+              max={15000}
+              min={10000}
+              step={100}
+              className="w-full"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Kolom Hasil */}
-      <div className="lg:col-span-8 bg-palm-dark text-white p-8 rounded-2xl shadow-xl flex flex-col justify-center items-center">
+      <Card className="lg:col-span-8 bg-palm-dark text-white rounded-2xl shadow-xl flex flex-col justify-center items-center p-8 border-none">
         <p className="text-palm-accent uppercase tracking-widest text-sm font-bold">
           Harga TBS Wajar Hari Ini
         </p>
@@ -46,7 +56,7 @@ export default function PriceCalculator() {
             <p className="text-xl font-bold">87.5%</p>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

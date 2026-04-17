@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import PriceCalculator from "../simulation/PriceCalculator";
+import ManajemenKebun from "../management/ManagemenKebun";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 export default function DashboardShell({ children }) {
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -16,28 +24,28 @@ export default function DashboardShell({ children }) {
           </h1>
         </div>
         <nav className="flex-1 p-4 space-y-2 mt-4">
-          <NavItem 
-            icon="📊" 
-            label="Dashboard" 
-            active={activeTab === "Dashboard"} 
+          <NavItem
+            icon="📊"
+            label="Dashboard"
+            active={activeTab === "Dashboard"}
             onClick={() => setActiveTab("Dashboard")}
           />
-          <NavItem 
-            icon="🚜" 
+          <NavItem
+            icon="🚜"
             label="Manajemen Kebun"
-            active={activeTab === "Manajemen Kebun"} 
+            active={activeTab === "Manajemen Kebun"}
             onClick={() => setActiveTab("Manajemen Kebun")}
           />
-          <NavItem 
-            icon="🏭" 
+          <NavItem
+            icon="🏭"
             label="Operasional PKS"
-            active={activeTab === "Operasional PKS"} 
+            active={activeTab === "Operasional PKS"}
             onClick={() => setActiveTab("Operasional PKS")}
           />
-          <NavItem 
-            icon="🧮" 
+          <NavItem
+            icon="🧮"
             label="Kalkulator Harga"
-            active={activeTab === "Kalkulator Harga"} 
+            active={activeTab === "Kalkulator Harga"}
             onClick={() => setActiveTab("Kalkulator Harga")}
           />
         </nav>
@@ -62,21 +70,38 @@ export default function DashboardShell({ children }) {
         {/* Dynamic Content */}
         <div className="p-8">
           {activeTab === "Dashboard" && children}
-          
-          {activeTab === "Manajemen Kebun" && (
-            <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-              <h3 className="text-xl font-bold text-palm-dark mb-2">Modul Manajemen Kebun</h3>
-              <p className="text-slate-500">Fitur pencatatan panen, perawatan blok, dan manajemen pekerja sedang dalam pengembangan.</p>
-            </div>
-          )}
-          
+
+          {
+            activeTab === "Manajemen Kebun" && <ManajemenKebun />
+            //   (
+            //     <Card className="border-none shadow-sm rounded-2xl">
+            //       <CardHeader>
+            //         <CardTitle className="text-xl font-bold text-palm-dark">
+            //           Modul Manajemen Kebun
+            //         </CardTitle>
+            //         <CardDescription>
+            //           Fitur pencatatan panen, perawatan blok, dan manajemen pekerja
+            //           sedang dalam pengembangan.
+            //         </CardDescription>
+            //       </CardHeader>
+            //     </Card>
+            //   )
+          }
+
           {activeTab === "Operasional PKS" && (
-            <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
-              <h3 className="text-xl font-bold text-palm-dark mb-2">Modul Operasional PKS</h3>
-              <p className="text-slate-500">Pencatatan penerimaan TBS, proses pengolahan, dan yield CPO/PK sedang dalam pengembangan.</p>
-            </div>
+            <Card className="border-none shadow-sm rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-palm-dark">
+                  Modul Operasional PKS
+                </CardTitle>
+                <CardDescription>
+                  Pencatatan penerimaan TBS, proses pengolahan, dan yield CPO/PK
+                  sedang dalam pengembangan.
+                </CardDescription>
+              </CardHeader>
+            </Card>
           )}
-          
+
           {activeTab === "Kalkulator Harga" && <PriceCalculator />}
         </div>
       </main>
