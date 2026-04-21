@@ -2,6 +2,7 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
+import DashboardShell from "@/components/layout/DashboardShell";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -17,7 +18,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" className={cn("font-sans", inter.variable)}>
-      <body className="antialiased bg-palm-bg text-slate-800">{children}</body>
+      <body className="antialiased bg-palm-bg text-slate-800">
+        <DashboardShell>
+          {children}
+        </DashboardShell>
+      </body>
     </html>
   );
 }

@@ -1,65 +1,118 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Sprout, TrendingUp, DollarSign, Activity, Truck } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+const chartData = [
+  { day: "1", actual: 40 },
+  { day: "5", actual: 70 },
+  { day: "10", actual: 45 },
+  { day: "15", actual: 90 },
+  { day: "20", actual: 65 },
+  { day: "25", actual: 80 },
+  { day: "30", actual: 85 },
+];
 
 export default function RefinedStats() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Row 1: KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Panen"
-          value="1.240 Ton"
-          trend="+12.5%"
+          value="1.240"
+          unit="Ton"
+          trend="12.5"
           isPositive={true}
+          icon={<Sprout className="w-5 h-5" />}
+          bgColor="bg-palm-primary/10"
+          textColor="text-palm-primary"
         />
         <StatCard
           title="Rata-rata OER"
-          value="23.4%"
-          trend="-0.4%"
+          value="23.4"
+          unit="%"
+          trend="0.4"
           isPositive={false}
+          icon={<TrendingUp className="w-5 h-5" />}
+          bgColor="bg-palm-accent/10"
+          textColor="text-palm-accent"
         />
         <StatCard
           title="Harga TBS Rata2"
-          value="Rp 2.650"
-          trend="+Rp 50"
+          value="2.650"
+          unit="Rp/Kg"
+          trend="50"
+          trendUnit="Rp"
           isPositive={true}
+          icon={<DollarSign className="w-5 h-5" />}
+          bgColor="bg-blue-50"
+          textColor="text-blue-600"
         />
         <StatCard
           title="Cost / Kg"
-          value="Rp 1.120"
-          trend="-2%"
+          value="1.120"
+          unit="Rp/Kg"
+          trend="2.0"
+          trendUnit="%"
           isPositive={true}
+          icon={<Activity className="w-5 h-5" />}
+          bgColor="bg-slate-100"
+          textColor="text-slate-600"
         />
       </div>
 
       {/* Row 2: Charts & Activities */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Placeholder Grafik - Dalam riilnya gunakan Recharts */}
-        <Card className="lg:col-span-2 border-none shadow-sm rounded-2xl min-h-[400px]">
+        {/* Recharts BarChart */}
+        <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="font-bold text-palm-dark">Tren Produksi 30 Hari Terakhir</CardTitle>
-            <select className="text-sm border-slate-200 rounded-md p-1 outline-none font-normal">
+            <div>
+              <CardTitle className="text-lg font-bold text-palm-dark">Tren Produksi 30 Hari Terakhir</CardTitle>
+              <CardDescription>Akumulasi tonase TBS yang diterima dari seluruh blok.</CardDescription>
+            </div>
+            <select className="text-sm border-slate-200 rounded-md p-1.5 outline-none font-normal bg-slate-50 border">
               <option>Semua Blok</option>
             </select>
           </CardHeader>
           <CardContent>
-            <div className="w-full h-64 bg-slate-50 rounded-lg flex items-end justify-between p-4 gap-2 mt-4">
-              {/* Simulasi batang grafik sederhana */}
-              {[40, 70, 45, 90, 65, 80, 50, 85].map((h, i) => (
-                <div
-                  key={i}
-                  style={{ height: `${h}%` }}
-                  className="flex-1 bg-palm-primary/20 hover:bg-palm-primary transition-colors rounded-t-sm"
-                />
-              ))}
+            <div className="h-[320px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 13 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 13 }} dx={-10} />
+                  <Tooltip
+                    cursor={{ fill: '#f1f5f9' }}
+                    contentStyle={{
+                      borderRadius: "8px",
+                      border: "none",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                    }}
+                  />
+                  <Bar dataKey="actual" name="Truk (Ton)" fill="#065F46" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
         {/* Tabel Aktivitas Terakhir */}
-        <Card className="border-none shadow-sm rounded-2xl flex flex-col">
+        <Card className="flex flex-col">
           <CardHeader>
-            <CardTitle className="font-bold text-palm-dark text-lg">Truk Terakhir (PKS)</CardTitle>
+            <CardTitle className="text-lg font-bold text-palm-dark">Truk Terakhir Masuk</CardTitle>
+            <CardDescription>Antrean timbangan di PKS.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col">
             <div className="space-y-4 flex-1">
@@ -82,7 +135,7 @@ export default function RefinedStats() {
                 status="Proses"
               />
             </div>
-            <Button variant="outline" className="w-full mt-6 text-palm-primary hover:text-palm-primary hover:bg-palm-bg">
+            <Button variant="outline" className="w-full mt-6 text-palm-primary hover:text-palm-primary hover:bg-slate-50 border-slate-200">
               Lihat Semua Antrean
             </Button>
           </CardContent>
@@ -92,22 +145,35 @@ export default function RefinedStats() {
   );
 }
 
-function StatCard({ title, value, trend, isPositive }) {
+function StatCard({ title, value, unit, trend, trendUnit = "%", isPositive, icon, bgColor, textColor }) {
   return (
-    <Card className="border-none shadow-sm rounded-2xl hover:shadow-md transition-shadow">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <h2 className="text-3xl font-bold text-palm-dark">{value}</h2>
-        <p
-          className={`text-sm mt-2 font-medium ${isPositive ? "text-emerald-600" : "text-rose-600"}`}
-        >
-          {isPositive ? "▲" : "▼"} {trend}{" "}
-          <span className="text-slate-400 font-normal">vs bln lalu</span>
-        </p>
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm font-medium text-slate-500">
+              {title}
+            </p>
+            <h3 className="text-3xl font-bold text-palm-dark mt-2">
+              {value} <span className="text-lg text-slate-500 font-medium">{unit}</span>
+            </h3>
+          </div>
+          <div className={`p-3 rounded-lg ${bgColor} ${textColor}`}>
+            {icon}
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-2 text-sm">
+          <span
+            className={`font-semibold flex items-center ${
+              isPositive ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {isPositive ? "+" : "-"}
+            {trend}
+            {trendUnit}
+          </span>
+          <span className="text-slate-500">vs bln lalu</span>
+        </div>
       </CardContent>
     </Card>
   );
@@ -115,18 +181,28 @@ function StatCard({ title, value, trend, isPositive }) {
 
 function RecentActivity({ id, source, weight, status }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-      <div>
-        <p className="text-sm font-bold text-palm-dark">{id}</p>
-        <p className="text-xs text-slate-500">{source}</p>
+    <div className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0 last:pb-0">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-slate-50 rounded-md border border-slate-100 text-slate-500">
+          <Truck className="w-4 h-4" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-palm-dark">{id}</p>
+          <p className="text-xs text-slate-500">{source}</p>
+        </div>
       </div>
       <div className="text-right">
-        <p className="text-sm font-medium">{weight}</p>
-        <p
-          className={`text-[10px] font-bold uppercase ${status === "Selesai" ? "text-emerald-500" : "text-palm-accent"}`}
+        <p className="text-sm font-semibold text-slate-800">{weight}</p>
+        <Badge
+          variant="outline"
+          className={`mt-1 font-normal text-[10px] uppercase border-none px-2 py-0.5 ${
+            status === "Selesai"
+              ? "bg-emerald-50 text-emerald-600"
+              : "bg-palm-accent/10 text-palm-accent"
+          }`}
         >
           {status}
-        </p>
+        </Badge>
       </div>
     </div>
   );
