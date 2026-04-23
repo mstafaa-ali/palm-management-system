@@ -38,9 +38,10 @@ import {
   Clock,
   Activity,
   Target,
+  Loader2,
 } from "lucide-react";
 
-// --- MOCK DATA: Berdasarkan sampel (Achmad Idris / Yudi Eka) ---
+// --- MOCK DATA FALLBACK ---
 const MOCK_DATA = {
   id: "lhn-01",
   name: "Desa Bumi Sejahtera",
@@ -81,16 +82,53 @@ const MOCK_DATA = {
 
 export default function LahanDetailPage() {
   const params = useParams();
-  const data = MOCK_DATA; // Dalam skenario nyata, ini di-fetch menggunakan params.id
+  const idStr = Array.isArray(params.id) ? params.id[0] : params.id;
+  
+  // Real State Data
+  const [data, setData] = React.useState(MOCK_DATA);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    async function fetchStats() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+        const res = await fetch(`${apiUrl}/api/lands/${idStr}/stats`);
+        if (res.ok) {
+          const json = await res.json();
+          const statsData = json.data;
+          
+          setData(prev => ({
+            ...prev,
+            stats: {
+              ...prev.stats,
+              totalProduction: statsData.real_tonase_current_month,
+              baselineProduction: statsData.baseline_tonase,
+            },
+            productionHistory: statsData.chart_data.map((d: any) => ({
+              month: d.date, 
+              actual: d.tonase,
+              baseline: statsData.baseline_tonase / 30 // rata2 harian sebagai garis panduan
+            }))
+          }));
+        }
+      } catch (err) {
+        console.error("Gagal load stats:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchStats();
+  }, [idStr]);
 
   // --- LOGIKA TRACKING KINERJA & STATISTIK ---
-  // Menghitung selisih persentase (Growth/Deficit) dari Produksi Riil dibandingkan dengan Baseline
-  const diffPercent = useMemo(() => {
-    const diff = data.stats.totalProduction - data.stats.baselineProduction;
-    return ((diff / data.stats.baselineProduction) * 100).toFixed(1);
-  }, [data.stats.totalProduction, data.stats.baselineProduction]);
+  const baseline = data.stats.baselineProduction || 1; // hindari division by zero
+  const actual = data.stats.totalProduction;
+  const achievementPercent = ((actual / baseline) * 100);
+  const isTargetAchieved = achievementPercent >= 100;
 
-  const isPositive = parseFloat(diffPercent) >= 0;
+  if (isLoading) {
+    return <div className="h-40 flex items-center justify-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -158,17 +196,21 @@ export default function LahanDetailPage() {
                 <Activity className="w-5 h-5" />
               </div>
             </div>
-            {/* Persentase Selisih */}
-            <div className="mt-4 flex items-center gap-2 text-sm">
-              <span
-                className={`font-semibold ${
-                  isPositive ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {isPositive ? "+" : ""}
-                {diffPercent}%
-              </span>
-              <span className="text-slate-500">vs baseline produksi</span>
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-1 text-sm font-semibold">
+                <span className={isTargetAchieved ? "text-emerald-600" : "text-amber-600"}>
+                  {achievementPercent.toFixed(1)}% Pencapaian
+                </span>
+                <span className="text-slate-500">
+                  {isTargetAchieved ? "(Melebihi Target)" : "(Di bawah Target)"}
+                </span>
+              </div>
+              <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 ${isTargetAchieved ? "bg-emerald-500" : "bg-amber-500"}`}
+                  style={{ width: `${Math.min(achievementPercent, 100)}%` }}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

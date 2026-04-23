@@ -32,16 +32,10 @@ import { z } from "zod";
 
 // --- MOCK DATA: Konteks Anggota ---
 const USER_PROFILE = {
-  name: "Achmad Idris",
-  nik: "64740211047860000",
-  defaultLocation: "Muara Komam",
+  name: "Daru Widiyatmoko",
+  nik: "6472032704720004", // NIK yang valid dan memiliki data lahan di DB
+  defaultLocation: "Desa Loleng",
 };
-
-const AVAILABLE_LOCATIONS = [
-  "Muara Komam",
-  "Desa Bumi Sejahtera",
-  "Blok Alpha Plasma",
-];
 
 // --- ZOD SCHEMA ---
 const tonaseSchema = z.coerce
@@ -59,18 +53,80 @@ export default function InputKerjaPage() {
   // Timer & Coordinate State
   const [seconds, setSeconds] = useState(0);
   const [coords, setCoords] = useState<string>("Pencarian GPS...");
+  const [checkInTime, setCheckInTime] = useState<Date | null>(null);
 
   // Form State
-  const [selectedLocation, setSelectedLocation] = useState(
-    USER_PROFILE.defaultLocation
-  );
+  const [locations, setLocations] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+  const [selectedLocationId, setSelectedLocationId] = useState("");
   const [tonaseInput, setTonaseInput] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Local Log Data
   const [logs, setLogs] = useState<
     Array<{ id: number; location: string; duration: string; tonase: number }>
   >([]);
+
+  // --- DATA FETCHING LOKASI & HISTORY ---
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+        
+        // Fetch Lokasi
+        const resLands = await fetch(`${apiUrl}/api/lands/user/${USER_PROFILE.nik}`);
+        if(resLands.ok) {
+          const json = await resLands.json();
+          const landsData = json.data?.lahan || [];
+          const mappedLocs = landsData.map((l: any) => ({
+            id: l.id,
+            name: l.lokasi_kebun || "Lahan Tanpa Nama"
+          }));
+
+          setLocations(mappedLocs);
+          if (mappedLocs.length > 0) {
+            setSelectedLocationId(mappedLocs[0].id);
+          }
+        }
+
+        // Fetch History Aktivitas Hari Ini
+        const resLogs = await fetch(`${apiUrl}/api/work-logs/user/${USER_PROFILE.nik}`);
+        if(resLogs.ok) {
+          const jsonLogs = await resLogs.json();
+          const fetchedLogs = jsonLogs.data || [];
+          // Mapping db logs ke format UI tabel
+          const finalLogs = fetchedLogs.map((log: any) => {
+            // Kalkulasi durasi manual untuk teks badge
+            const start = new Date(log.check_in_time);
+            const end = new Date(log.check_out_time);
+            const diffSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+            
+            const h = Math.floor(diffSeconds / 3600).toString().padStart(2, "0");
+            const m = Math.floor((diffSeconds % 3600) / 60).toString().padStart(2, "0");
+            const s = (diffSeconds % 60).toString().padStart(2, "0");
+
+            return {
+              id: log.id,
+              location: log.location,
+              duration: `${h}:${m}:${s}`,
+              tonase: log.tonase
+            };
+          });
+          setLogs(finalLogs);
+        }
+
+      } catch (e) {
+        console.error("Gagal load data:", e);
+      } finally {
+        setIsLoadingLocations(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   // --- TIMER LOGIC ---
   useEffect(() => {
@@ -101,10 +157,12 @@ export default function InputKerjaPage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setCoords(
-            `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
+            `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
           );
           setAppState("active");
           setSeconds(0);
+          setCheckInTime(new Date());
+          setSuccessMsg(null); // Clear notif jika ada
         },
         (error) => {
           console.warn("GPS error:", error.message);
@@ -112,12 +170,14 @@ export default function InputKerjaPage() {
           setAppState("active");
           setSeconds(0);
         },
-        { timeout: 10000, enableHighAccuracy: true }
+        { timeout: 10000, enableHighAccuracy: true },
       );
     } else {
       setCoords("GPS Tidak Didukung di Perangkat Ini");
       setAppState("active");
       setSeconds(0);
+      setCheckInTime(new Date());
+      setSuccessMsg(null);
     }
   };
 
@@ -125,30 +185,83 @@ export default function InputKerjaPage() {
     setAppState("input");
   };
 
-  const handleSubmitTonase = () => {
+  const handleSubmitTonase = async () => {
     // Validasi Zod
     const result = tonaseSchema.safeParse(tonaseInput);
     if (!result.success) {
-      setFormError(result.error.errors[0].message);
+      setFormError(
+        result.error.errors?.[0]?.message || "Input tonase tidak valid",
+      );
+      return;
+    }
+
+    if (!checkInTime) {
+      setFormError("Check-in time tidak ditemukan.");
       return;
     }
 
     setFormError(null);
+    setIsSubmitting(true);
 
-    // Simpan ke Log Lokal
-    const newLog = {
-      id: Date.now(),
-      location: selectedLocation,
-      duration: formatTime(seconds),
-      tonase: result.data,
-    };
-    setLogs([newLog, ...logs]);
+    const checkoutT = new Date();
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-    // Reset Flow
-    setAppState("idle");
-    setSeconds(0);
-    setTonaseInput("");
-    setCoords("Pencarian GPS...");
+    try {
+      const payload = {
+        worker_nik: USER_PROFILE.nik,
+        land_id: selectedLocationId,
+        check_in_time: checkInTime.toISOString(),
+        check_out_time: checkoutT.toISOString(),
+        tonase: result.data,
+      };
+
+      const res = await fetch(`${apiUrl}/api/work-logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const jsonRes = await res.json();
+
+      if (!res.ok) {
+        throw new Error(jsonRes.message || "Terjadi kesalahan server");
+      }
+
+      // Refresh History Langsung dari backend agar akurat
+      try {
+        const resLogs = await fetch(`${apiUrl}/api/work-logs/user/${USER_PROFILE.nik}`);
+        if(resLogs.ok) {
+          const jsonLogs = await resLogs.json();
+          const fetchedLogs = jsonLogs.data || [];
+          const finalLogs = fetchedLogs.map((log: any) => {
+            const start = new Date(log.check_in_time);
+            const end = new Date(log.check_out_time);
+            const diffSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+            const h = Math.floor(diffSeconds / 3600).toString().padStart(2, "0");
+            const m = Math.floor((diffSeconds % 3600) / 60).toString().padStart(2, "0");
+            const s = (diffSeconds % 60).toString().padStart(2, "0");
+            return { id: log.id, location: log.location, duration: `${h}:${m}:${s}`, tonase: log.tonase };
+          });
+          setLogs(finalLogs);
+        }
+      } catch(e) {}
+
+      // Trigger Notifikasi Sukses Lokal
+      setSuccessMsg(`Log panen ${result.data} Ton berhasil dikirim!`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+
+      // Reset Flow
+      setAppState("idle");
+      setSeconds(0);
+      setTonaseInput("");
+      setCheckInTime(null);
+      setCoords("Pencarian GPS...");
+    } catch (err: any) {
+      console.error(err);
+      setFormError(err.message || "Gagal terkoneksi ke server API");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // --- RENDER HELPERS ---
@@ -170,6 +283,14 @@ export default function InputKerjaPage() {
         <p className="text-xs text-slate-400 font-mono mt-1">
           NIK: {USER_PROFILE.nik}
         </p>
+
+        {/* Global Notification Banner */}
+        {successMsg && (
+          <div className="mt-4 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-lg text-sm font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            {successMsg}
+          </div>
+        )}
       </div>
 
       <div className="px-4 space-y-6">
@@ -181,8 +302,8 @@ export default function InputKerjaPage() {
                 appState === "active"
                   ? "bg-palm-accent w-1/2"
                   : appState === "input"
-                  ? "bg-palm-primary w-full"
-                  : "bg-slate-300 w-0"
+                    ? "bg-palm-primary w-full"
+                    : "bg-slate-300 w-0"
               }`}
             />
           </div>
@@ -203,8 +324,8 @@ export default function InputKerjaPage() {
                   <Play className="w-10 h-10 text-slate-300 ml-1" />
                 </div>
                 <p className="text-center text-sm text-slate-500 px-4">
-                  Tekan tombol di bawah saat Anda siap memulai pekerjaan di lahan.
-                  GPS akan dinyalakan otomatis.
+                  Tekan tombol di bawah saat Anda siap memulai pekerjaan di
+                  lahan. GPS akan dinyalakan otomatis.
                 </p>
                 <Button
                   onClick={handleStartWork}
@@ -266,15 +387,26 @@ export default function InputKerjaPage() {
                     Lokasi Lahan
                   </label>
                   <select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="flex h-14 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palm-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={selectedLocationId}
+                    onChange={(e) => setSelectedLocationId(e.target.value)}
+                    className="flex h-14 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palm-primary focus-visible:ring-offset-2 disabled:opacity-50"
+                    disabled={isLoadingLocations || locations.length === 0}
                   >
-                    {AVAILABLE_LOCATIONS.map((loc) => (
-                      <option key={loc} value={loc}>
-                        {loc}
+                    {isLoadingLocations ? (
+                      <option disabled value="">
+                        Memuat Lahan...
                       </option>
-                    ))}
+                    ) : locations.length === 0 ? (
+                      <option disabled value="">
+                        Tidak ada lahan terdaftar
+                      </option>
+                    ) : (
+                      locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -291,7 +423,9 @@ export default function InputKerjaPage() {
                       value={tonaseInput}
                       onChange={(e) => setTonaseInput(e.target.value)}
                       className={`h-16 pl-14 text-2xl font-bold bg-slate-50 border-2 focus-visible:ring-palm-primary ${
-                        formError ? "border-red-500 focus-visible:ring-red-500" : "border-slate-200"
+                        formError
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : "border-slate-200"
                       }`}
                     />
                   </div>
@@ -306,9 +440,9 @@ export default function InputKerjaPage() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                       // Kembali ke mode aktif batal Check-out
-                       setAppState("active");
-                       setFormError(null);
+                      // Kembali ke mode aktif batal Check-out
+                      setAppState("active");
+                      setFormError(null);
                     }}
                     className="flex-1 py-6 text-sm font-bold text-slate-600 rounded-xl"
                   >
@@ -316,10 +450,13 @@ export default function InputKerjaPage() {
                   </Button>
                   <Button
                     onClick={handleSubmitTonase}
-                    className="flex-[2] py-6 text-base font-bold bg-palm-primary hover:bg-palm-primary/90 text-white rounded-xl shadow-md"
+                    disabled={isSubmitting}
+                    className="flex-[2] py-6 text-base font-bold bg-palm-primary hover:bg-palm-primary/90 text-white rounded-xl shadow-md disabled:bg-palm-primary/50"
                   >
-                    <CheckCircle2 className="w-5 h-5 mr-2" />
-                    SIMPAN DATA
+                    <CheckCircle2
+                      className={`w-5 h-5 mr-2 ${isSubmitting ? "animate-pulse" : ""}`}
+                    />
+                    {isSubmitting ? "MENYIMPAN..." : "SIMPAN DATA"}
                   </Button>
                 </div>
               </div>
@@ -346,16 +483,25 @@ export default function InputKerjaPage() {
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
-                    <TableHead className="text-xs font-semibold h-10">Waktu</TableHead>
-                    <TableHead className="text-xs font-semibold h-10">Lokasi</TableHead>
-                    <TableHead className="text-right text-xs font-semibold h-10">Hasil</TableHead>
+                    <TableHead className="text-xs font-semibold h-10">
+                      Waktu
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold h-10">
+                      Lokasi
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-semibold h-10">
+                      Hasil
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="py-3">
-                        <Badge variant="outline" className="text-[10px] font-mono bg-white">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-mono bg-white"
+                        >
                           {log.duration}
                         </Badge>
                       </TableCell>
@@ -364,7 +510,10 @@ export default function InputKerjaPage() {
                       </TableCell>
                       <TableCell className="py-3 text-right">
                         <span className="text-sm font-bold text-palm-dark">
-                          {log.tonase} <span className="text-[10px] font-normal text-slate-500">Ton</span>
+                          {log.tonase}{" "}
+                          <span className="text-[10px] font-normal text-slate-500">
+                            Ton
+                          </span>
                         </span>
                       </TableCell>
                     </TableRow>
