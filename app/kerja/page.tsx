@@ -30,12 +30,7 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 
-// --- MOCK DATA: Konteks Anggota ---
-const USER_PROFILE = {
-  name: "Daru Widiyatmoko",
-  nik: "6472032704720004", // NIK yang valid dan memiliki data lahan di DB
-  defaultLocation: "Desa Loleng",
-};
+import { useRouter } from "next/navigation";
 
 // --- ZOD SCHEMA ---
 const tonaseSchema = z.coerce
@@ -46,6 +41,9 @@ const tonaseSchema = z.coerce
   .positive("Tonase harus lebih dari 0");
 
 export default function InputKerjaPage() {
+  const router = useRouter();
+  const [userProfile, setUserProfile] = useState<{ nik: string; name: string; defaultLocation: string } | null>(null);
+
   // --- UI STATES ---
   // 'idle' | 'active' | 'input'
   const [appState, setAppState] = useState<"idle" | "active" | "input">("idle");
@@ -75,10 +73,30 @@ export default function InputKerjaPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         
+        // Fetch Auth Session
+        const resAuth = await fetch(`${apiUrl}/api/auth/me`, {
+          credentials: "include"
+        });
+
+        if (!resAuth.ok) {
+          router.push("/login");
+          return;
+        }
+
+        const authJson = await resAuth.json();
+        const profile = {
+          nik: authJson.data.nik,
+          name: authJson.data.nama_lengkap,
+          defaultLocation: authJson.data.lokasi_default || "Lahan Tanpa Nama"
+        };
+        setUserProfile(profile);
+
         // Fetch Lokasi
-        const resLands = await fetch(`${apiUrl}/api/lands/user/${USER_PROFILE.nik}`);
+        const resLands = await fetch(`${apiUrl}/api/lands/user/${profile.nik}`, {
+          credentials: "include"
+        });
         if(resLands.ok) {
           const json = await resLands.json();
           const landsData = json.data?.lahan || [];
@@ -94,7 +112,9 @@ export default function InputKerjaPage() {
         }
 
         // Fetch History Aktivitas Hari Ini
-        const resLogs = await fetch(`${apiUrl}/api/work-logs/user/${USER_PROFILE.nik}`);
+        const resLogs = await fetch(`${apiUrl}/api/work-logs/user/${profile.nik}`, {
+          credentials: "include"
+        });
         if(resLogs.ok) {
           const jsonLogs = await resLogs.json();
           const fetchedLogs = jsonLogs.data || [];
@@ -126,7 +146,7 @@ export default function InputKerjaPage() {
       }
     }
     fetchData();
-  }, []);
+  }, [router]);
 
   // --- TIMER LOGIC ---
   useEffect(() => {
@@ -203,12 +223,14 @@ export default function InputKerjaPage() {
     setFormError(null);
     setIsSubmitting(true);
 
+    if (!userProfile) return;
+
     const checkoutT = new Date();
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
     try {
       const payload = {
-        worker_nik: USER_PROFILE.nik,
+        worker_nik: userProfile.nik,
         land_id: selectedLocationId,
         check_in_time: checkInTime.toISOString(),
         check_out_time: checkoutT.toISOString(),
@@ -218,6 +240,7 @@ export default function InputKerjaPage() {
       const res = await fetch(`${apiUrl}/api/work-logs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -229,7 +252,9 @@ export default function InputKerjaPage() {
 
       // Refresh History Langsung dari backend agar akurat
       try {
-        const resLogs = await fetch(`${apiUrl}/api/work-logs/user/${USER_PROFILE.nik}`);
+        const resLogs = await fetch(`${apiUrl}/api/work-logs/user/${userProfile.nik}`, {
+          credentials: "include"
+        });
         if(resLogs.ok) {
           const jsonLogs = await resLogs.json();
           const fetchedLogs = jsonLogs.data || [];
@@ -272,16 +297,20 @@ export default function InputKerjaPage() {
     year: "numeric",
   }).format(new Date());
 
+  if (!userProfile) {
+    return <div className="min-h-screen flex items-center justify-center"><p className="text-slate-500">Memuat data pengguna...</p></div>;
+  }
+
   return (
     <div className="w-full max-w-md mx-auto space-y-6 pb-20">
       {/* 1. HEADER MOBILE */}
       <div className="bg-white p-6 rounded-b-3xl shadow-sm border-b border-slate-100">
         <p className="text-sm font-medium text-slate-500 mb-1">{todayDate}</p>
         <h1 className="text-2xl font-bold text-palm-dark">
-          Halo, {USER_PROFILE.name}! 👋
+          Halo, {userProfile.name}! 👋
         </h1>
         <p className="text-xs text-slate-400 font-mono mt-1">
-          NIK: {USER_PROFILE.nik}
+          NIK: {userProfile.nik}
         </p>
 
         {/* Global Notification Banner */}
@@ -355,7 +384,7 @@ export default function InputKerjaPage() {
                       Lokasi Tracking
                     </p>
                     <p className="font-semibold text-slate-700">
-                      {USER_PROFILE.defaultLocation}
+                      {userProfile.defaultLocation}
                     </p>
                     <p className="text-[10px] text-slate-500 font-mono mt-1">
                       {coords}
