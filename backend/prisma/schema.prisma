@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,65 +7,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================================
-// TABLE: users
-// Menyimpan data pemilik lahan / anggota FPKS KALTIM
-// Source: "Data kartu tanda anggota DPP FPKS KALTIM"
-// ============================================================
 model User {
-  nik                      String  @id @db.VarChar(50)
-  nama_lengkap             String  @db.VarChar(255)
-  jenis_kelamin            String? @db.VarChar(20)
-  tempat_lahir             String? @db.VarChar(100)
-  tanggal_lahir_raw        String? @db.VarChar(100) // Raw karena format tidak konsisten ("25 Juli 1991", "11-Apr-76")
-  pendidikan_terakhir      String? @db.VarChar(100)
-  alamat_lengkap           String? @db.Text
-  nomor_hp                 String? @db.VarChar(30)
-  jumlah_anggota_keluarga  Int?
-  status_keanggotaan       String? @db.VarChar(100) // "Anggota" / "Pengurus"
-
-  // Relasi: satu user bisa punya banyak lahan dan banyak log kerja
-  lands     Land[]
-  work_logs WorkLog[]
+  nik                     String    @id @db.VarChar(50)
+  nama_lengkap            String    @db.VarChar(255)
+  jenis_kelamin           String?   @db.VarChar(20)
+  tempat_lahir            String?   @db.VarChar(100)
+  tanggal_lahir_raw       String?   @db.VarChar(100)
+  pendidikan_terakhir     String?   @db.VarChar(100)
+  alamat_lengkap          String?
+  nomor_hp                String?   @db.VarChar(30)
+  jumlah_anggota_keluarga Int?
+  status_keanggotaan      String?   @db.VarChar(100)
+  lands                   Land[]
+  work_logs               WorkLog[]
 
   @@map("users")
 }
 
-// ============================================================
-// TABLE: lands
-// Menyimpan data lahan sawit milik anggota
-// Satu user bisa memiliki banyak baris lahan (dari baris CSV berbeda)
-// ============================================================
 model Land {
-  id                    String   @id @default(uuid()) @db.Uuid
-  owner_nik             String   @db.VarChar(50)
-  nama_kelompok_tani    String?  @db.VarChar(255)
-  lokasi_kebun          String?  @db.Text
-  luas_ha               Decimal? @db.Decimal(10, 4)
-  status_kepemilikan    String?  @db.VarChar(100)  // "Milik Sendiri", "Plasma", dll
-  jenis_sertifikasi     String?  @db.VarChar(100)  // "ISPO", "RSPO", "Belum bersertifikat"
-  usia_tanam_raw        String?  @db.VarChar(100)  // Raw string: "4-12 tahun", "2 dan 7 tahun", "TBM"
-  jenis_bibit           String?  @db.VarChar(100)
-  koordinat_gps         String?  @db.Text
-  baseline_produksi_ton Decimal? @db.Decimal(10, 4)
-  produksi_raw          String?  @db.VarChar(100)  // Simpan nilai asli jika tidak bisa jadi angka ("TBM", "5000-18000")
-  pabrik_mitra          String?  @db.VarChar(255)
-
-  // Relasi FK ke users
-  owner User @relation(fields: [owner_nik], references: [nik], onDelete: Cascade)
-  
-  // Relasi ke tabel log kerja, panen, dan biaya
-  work_logs WorkLog[]
-  harvests  Harvest[]
-  costs     Cost[]
+  id                    String           @id @default(uuid()) @db.Uuid
+  owner_nik             String           @db.VarChar(50)
+  nama_kelompok_tani    String?          @db.VarChar(255)
+  lokasi_kebun          String?
+  luas_ha               Decimal?         @db.Decimal(10, 4)
+  status_kepemilikan    String?          @db.VarChar(100)
+  jenis_sertifikasi     String?          @db.VarChar(100)
+  usia_tanam_raw        String?          @db.VarChar(100)
+  baseline_produksi_ton Decimal?         @db.Decimal(10, 4)
+  produksi_raw          String?          @db.VarChar(100)
+  pabrik_mitra          String?          @db.VarChar(255)
+  jenis_bibit           String?          @db.VarChar(100)
+  koordinat_gps         String?
+  costs                 Cost[]
+  harvests              Harvest[]
+  owner                 User             @relation(fields: [owner_nik], references: [nik], onDelete: Cascade)
+  weighbridge_logs      WeighbridgeLog[]
+  work_logs             WorkLog[]
 
   @@map("lands")
 }
 
-// ============================================================
-// TABLE: work_logs
-// Menyimpan data harian hasil panen dan waktu kerja lapangan
-// ============================================================
 model WorkLog {
   id             String   @id @default(uuid()) @db.Uuid
   worker_nik     String   @db.VarChar(50)
@@ -76,19 +54,14 @@ model WorkLog {
   check_in_time  DateTime
   check_out_time DateTime
   tonase         Decimal  @db.Decimal(10, 4)
-  jumlah_janjang Int?
   created_at     DateTime @default(now())
-
-  worker User @relation(fields: [worker_nik], references: [nik], onDelete: Cascade)
-  land   Land @relation(fields: [land_id], references: [id], onDelete: Cascade)
+  jumlah_janjang Int?
+  land           Land     @relation(fields: [land_id], references: [id], onDelete: Cascade)
+  worker         User     @relation(fields: [worker_nik], references: [nik], onDelete: Cascade)
 
   @@map("work_logs")
 }
 
-// ============================================================
-// TABLE: session
-// Digunakan oleh connect-pg-simple untuk menyimpan session data
-// ============================================================
 model Session {
   sid    String   @id @db.VarChar
   sess   Json     @db.Json
@@ -98,37 +71,77 @@ model Session {
   @@map("session")
 }
 
-// ============================================================
-// TABLE: harvests
-// Menyimpan data panen harian per lahan
-// ============================================================
 model Harvest {
-  id                 String   @id @default(uuid()) @db.Uuid
-  land_id            String   @db.Uuid
-  tanggal_panen      DateTime @db.Date
-  jumlah_janjang     Int
-  estimasi_berat_kg  Decimal  @db.Decimal(10, 2)
-  created_at         DateTime @default(now())
-
-  land Land @relation(fields: [land_id], references: [id], onDelete: Cascade)
+  id                String   @id @default(uuid()) @db.Uuid
+  land_id           String   @db.Uuid
+  tanggal_panen     DateTime @db.Date
+  jumlah_janjang    Int
+  estimasi_berat_kg Decimal  @db.Decimal(10, 2)
+  created_at        DateTime @default(now())
+  land              Land     @relation(fields: [land_id], references: [id], onDelete: Cascade)
 
   @@map("harvests")
 }
 
-// ============================================================
-// TABLE: costs
-// Menyimpan data biaya operasional per lahan
-// ============================================================
 model Cost {
-  id            String   @id @default(uuid()) @db.Uuid
-  land_id       String   @db.Uuid
-  tanggal       DateTime @db.Date
-  jenis_biaya   String   @db.VarChar(100) // "Pupuk", "Upah", "Transport", "Lainnya"
-  jumlah_biaya  Decimal  @db.Decimal(15, 2)
-  keterangan    String?  @db.Text
-  created_at    DateTime @default(now())
-
-  land Land @relation(fields: [land_id], references: [id], onDelete: Cascade)
+  id           String   @id @default(uuid()) @db.Uuid
+  land_id      String   @db.Uuid
+  tanggal      DateTime @db.Date
+  jenis_biaya  String   @db.VarChar(100)
+  jumlah_biaya Decimal  @db.Decimal(15, 2)
+  keterangan   String?
+  created_at   DateTime @default(now())
+  land         Land     @relation(fields: [land_id], references: [id], onDelete: Cascade)
 
   @@map("costs")
+}
+
+model WeighbridgeLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  nomor_kendaraan String    @db.VarChar(20)
+  nama_supir      String?   @db.VarChar(255)
+  sumber          String    @db.VarChar(20)
+  land_id         String?   @db.Uuid
+  nama_pemasok    String?   @db.VarChar(255)
+  berat_bruto_kg  Decimal   @db.Decimal(10, 2)
+  berat_tara_kg   Decimal?  @db.Decimal(10, 2)
+  berat_netto_kg  Decimal?  @db.Decimal(10, 2)
+  waktu_masuk     DateTime  @default(now())
+  waktu_keluar    DateTime?
+  status          String    @default("masuk") @db.VarChar(20)
+  created_at      DateTime  @default(now())
+  land            Land?     @relation(fields: [land_id], references: [id])
+
+  @@map("weighbridge_logs")
+}
+
+model MillProduction {
+  id                String     @id @default(uuid()) @db.Uuid
+  tanggal_produksi  DateTime   @db.Date
+  tbs_olah_kg       Decimal    @db.Decimal(12, 2)
+  cpo_dihasilkan_kg Decimal    @db.Decimal(12, 2)
+  pk_dihasilkan_kg  Decimal    @db.Decimal(12, 2)
+  oer_persen        Decimal?   @db.Decimal(5, 2)
+  ker_persen        Decimal?   @db.Decimal(5, 2)
+  catatan           String?
+  created_at        DateTime   @default(now())
+  losses            MillLoss[]
+
+  @@map("mill_productions")
+}
+
+model MillLoss {
+  id                  String          @id @default(uuid()) @db.Uuid
+  production_id       String?         @db.Uuid
+  tanggal             DateTime        @db.Date
+  tahap_proses        String          @db.VarChar(50)
+  jenis_losses        String          @db.VarChar(100)
+  losses_kg           Decimal         @db.Decimal(10, 2)
+  kadar_minyak_persen Decimal?        @db.Decimal(5, 2)
+  oil_losses_kg       Decimal?        @db.Decimal(10, 2)
+  catatan             String?         @db.Text
+  created_at          DateTime        @default(now())
+  production          MillProduction? @relation(fields: [production_id], references: [id])
+
+  @@map("mill_losses")
 }

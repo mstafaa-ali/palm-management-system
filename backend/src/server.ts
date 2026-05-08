@@ -18,6 +18,9 @@ import workLogsRoutes from "./routes/work-logs.routes";
 import authRoutes from "./routes/auth.routes";
 import harvestsRoutes from "./routes/harvests.routes";
 import costsRoutes from "./routes/costs.routes";
+import weighbridgeRoutes from "./routes/weighbridge.routes";
+import millProductionRoutes from "./routes/mill-production.routes";
+import millLossesRoutes from "./routes/mill-losses.routes";
 // ─── App Setup ────────────────────────────────────────────────────────────────
 
 const app = express();
@@ -37,10 +40,11 @@ const ALLOWED_ORIGINS_PROD = [
 ];
 
 const corsOptions: cors.CorsOptions = {
-  origin: "http://localhost:3000", // Sesuai permintaan: origin ketat
+  origin: "http://localhost:3000", 
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   credentials: true,
+  optionsSuccessStatus: 200, // Penting untuk preflight (OPTIONS) di beberapa browser
 };
 
 app.use(cors(corsOptions));
@@ -90,6 +94,9 @@ app.use("/api/users", usersRoutes);
 app.use("/api/work-logs", workLogsRoutes);
 app.use("/api/harvests", harvestsRoutes);
 app.use("/api/costs", costsRoutes);
+app.use("/api/weighbridge", weighbridgeRoutes);
+app.use("/api/mill-production", millProductionRoutes);
+app.use("/api/mill-losses", millLossesRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 

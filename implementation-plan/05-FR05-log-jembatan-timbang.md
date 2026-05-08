@@ -1,6 +1,6 @@
 # FR-05: Log Jembatan Timbang
 
-> **Status:** ❌ Belum diimplementasi
+> **Status:** ✅ Selesai
 > **Modul:** B — Manajemen PKS
 > **Requirement:** Pencatatan TBS masuk (Bruto, Tara, Netto) dan sumber asal kebun (Internal vs Eksternal)
 > **Prioritas:** 🟡 P1
@@ -199,29 +199,29 @@ export const updateTara = async (req: Request, res: Response) => {
 ## 5. Checklist Implementasi
 
 ### Database
-- [ ] Tambah model `WeighbridgeLog` di schema.prisma
-- [ ] Tambah relasi `weighbridge_logs` di model `Land`
-- [ ] Run `npx prisma migrate dev --name add_weighbridge`
+- [x] Tambah model `WeighbridgeLog` di schema.prisma
+- [x] Tambah relasi `weighbridge_logs` di model `Land`
+- [x] Run `npx prisma migrate dev --name add_weighbridge`
 
 ### Backend
-- [ ] Buat `weighbridge.controller.ts`
-- [ ] Buat `weighbridge.routes.ts`
-- [ ] Register route di `server.ts`
-- [ ] Implementasi: POST (truk masuk)
-- [ ] Implementasi: PATCH (input tara, hitung netto)
-- [ ] Implementasi: GET (list + filter)
-- [ ] Implementasi: GET summary (rangkuman harian)
+- [x] Buat `weighbridge.controller.ts`
+- [x] Buat `weighbridge.routes.ts`
+- [x] Register route di `server.ts`
+- [x] Implementasi: POST (truk masuk)
+- [x] Implementasi: PATCH (input tara, hitung netto)
+- [x] Implementasi: GET (list + filter)
+- [x] Implementasi: GET summary (rangkuman harian)
 
 ### Frontend
-- [ ] Replace placeholder di `mill-operations/page.tsx`
-- [ ] Buat `WeighbridgeTable.tsx`
-- [ ] Buat `WeighbridgeEntryDialog.tsx`
-- [ ] Buat `TaraInputDialog.tsx`
-- [ ] Buat `WeighbridgeSummary.tsx` (KPI cards)
-- [ ] Badge status: "masuk" (kuning), "selesai" (hijau)
-- [ ] Badge sumber: "Internal" (biru), "Eksternal" (oranye)
+- [x] Replace placeholder di `mill-operations/page.tsx`
+- [x] Buat `WeighbridgeTable.tsx`
+- [x] Buat `WeighbridgeEntryDialog.tsx`
+- [x] Buat `TaraInputDialog.tsx`
+- [x] Buat `WeighbridgeSummary.tsx` (KPI cards)
+- [x] Badge status: "masuk" (kuning), "selesai" (hijau)
+- [x] Badge sumber: "Internal" (biru), "Eksternal" (oranye)
 
 ### Testing
-- [ ] Test flow: POST truk masuk → PATCH tara → verifikasi netto = bruto - tara
-- [ ] Test validasi: Internal tanpa land_id → 400
-- [ ] Test filter: GET dengan query params tanggal & sumber
+- [x] Test flow: POST truk masuk → PATCH tara → verifikasi netto = bruto - tara
+- [x] Test validasi: Internal tanpa land_id → 400
+- [x] Test filter: GET dengan query params tanggal & sumber

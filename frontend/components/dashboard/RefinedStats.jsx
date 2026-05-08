@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,20 @@ const chartData = [
 ];
 
 export default function RefinedStats() {
+  const [oerAvg, setOerAvg] = useState("23.4");
+  
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    fetch(`${apiUrl}/api/mill-production/summary`)
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data && json.data.rata_oer !== undefined) {
+          setOerAvg(json.data.rata_oer.toFixed(1));
+        }
+      })
+      .catch(err => console.error("Error fetching OER avg:", err));
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Row 1: KPI Cards */}
@@ -41,10 +56,10 @@ export default function RefinedStats() {
         />
         <StatCard
           title="Rata-rata OER"
-          value="23.4"
+          value={oerAvg}
           unit="%"
           trend="0.4"
-          isPositive={false}
+          isPositive={Number(oerAvg) >= 22}
           icon={<TrendingUp className="w-5 h-5" />}
           bgColor="bg-palm-accent/10"
           textColor="text-palm-accent"
